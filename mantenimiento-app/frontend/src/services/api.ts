@@ -25,9 +25,8 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
     };
 
     if (this.token) {
@@ -63,7 +62,7 @@ class ApiService {
     endpoint: string,
     formData: FormData
   ): Promise<ApiResponse<T>> {
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;

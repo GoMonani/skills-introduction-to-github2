@@ -583,8 +583,8 @@ class GoogleSheetsService {
       createdAt: rows[rowIndex][9],
       updatedAt: rows[rowIndex][10],
       ...updates,
-      updatedAt: new Date().toISOString(),
     };
+    commitment.updatedAt = new Date().toISOString();
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: config.google.spreadsheetId,

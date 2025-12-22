@@ -33,7 +33,7 @@ interface MantenimientoDB extends DBSchema {
   };
   auth: {
     key: string;
-    value: { token: string; user: User };
+    value: { key: string; token: string; user: User };
   };
   fileCache: {
     key: string;

@@ -86,8 +86,8 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
 
 export function generateToken(payload: AuthPayload): string {
   return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
-  });
+    expiresIn: config.jwt.expiresIn as string,
+  } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string): AuthPayload | null {
