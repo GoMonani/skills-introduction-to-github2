@@ -197,10 +197,17 @@ class GoogleSheetsService {
     const sheets = await this.getClient();
     const now = new Date().toISOString();
 
-    // Generate ticket code
+    // Generate ticket code - use max existing code number to avoid gaps/races
     const tickets = await this.getAllTickets();
-    const nextNumber = tickets.length + 1;
-    const code = `TCK_${String(nextNumber).padStart(3, '0')}`;
+    let maxNumber = 0;
+    for (const t of tickets) {
+      const match = t.code.match(/^TCK_(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNumber) maxNumber = num;
+      }
+    }
+    const code = `TCK_${String(maxNumber + 1).padStart(3, '0')}`;
 
     const ticket: Ticket = {
       id: uuidv4(),
@@ -551,7 +558,7 @@ class GoogleSheetsService {
         dueDate: row[5] || '',
         status: (row[6] as Commitment['status']) || 'pendiente',
         completedAt: row[7] || undefined,
-        reminderSent: row[8] === 'true',
+        reminderSent: String(row[8]).toLowerCase() === 'true',
         createdAt: row[9] || '',
         updatedAt: row[10] || '',
       }))
@@ -579,7 +586,7 @@ class GoogleSheetsService {
       dueDate: rows[rowIndex][5],
       status: rows[rowIndex][6] as Commitment['status'],
       completedAt: rows[rowIndex][7] || undefined,
-      reminderSent: rows[rowIndex][8] === 'true',
+      reminderSent: String(rows[rowIndex][8]).toLowerCase() === 'true',
       createdAt: rows[rowIndex][9],
       updatedAt: rows[rowIndex][10],
       ...updates,
@@ -628,7 +635,7 @@ class GoogleSheetsService {
         dueDate: row[5] || '',
         status: (row[6] as Commitment['status']) || 'pendiente',
         completedAt: row[7] || undefined,
-        reminderSent: row[8] === 'true',
+        reminderSent: String(row[8]).toLowerCase() === 'true',
         createdAt: row[9] || '',
         updatedAt: row[10] || '',
       }))

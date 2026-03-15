@@ -4,22 +4,39 @@ import { AppState } from '../types';
 
 type SyncCallback = (state: AppState) => void;
 
+const MAX_SYNC_RETRIES = 5;
+
 class SyncService {
   private isRunning = false;
   private syncInterval: number | null = null;
   private callbacks: SyncCallback[] = [];
   private retryTimeout: number | null = null;
+  private boundHandleOnline: () => void;
+  private boundHandleOffline: () => void;
+
+  constructor() {
+    this.boundHandleOnline = () => this.handleOnline();
+    this.boundHandleOffline = () => this.handleOffline();
+  }
 
   async init(): Promise<void> {
     // Listen for online/offline events
-    window.addEventListener('online', () => this.handleOnline());
-    window.addEventListener('offline', () => this.handleOffline());
+    window.addEventListener('online', this.boundHandleOnline);
+    window.addEventListener('offline', this.boundHandleOffline);
 
     // Initialize state
     await storageService.saveAppState({
       isOnline: navigator.onLine,
       isSyncing: false,
     });
+
+    // Reset any stuck "processing" sync items back to pending
+    const pending = await storageService.getPendingSyncItems();
+    for (const item of pending) {
+      if (item.status === 'processing') {
+        await storageService.updateSyncItem(item.id, { status: 'pending' });
+      }
+    }
 
     // Start periodic sync check
     this.startPeriodicSync();
@@ -63,15 +80,17 @@ class SyncService {
   }
 
   async runSync(): Promise<boolean> {
+    // Guard against concurrent runs
     if (this.isRunning || !navigator.onLine) {
       return false;
     }
 
     this.isRunning = true;
-    await storageService.saveAppState({ isSyncing: true });
-    await this.notifySubscribers();
 
     try {
+      await storageService.saveAppState({ isSyncing: true });
+      await this.notifySubscribers();
+
       // Sync pending items
       const pendingCount = await storageService.getSyncQueueCount();
 
@@ -87,15 +106,15 @@ class SyncService {
       await this.refreshData();
 
       // Update state
+      const remainingCount = await storageService.getSyncQueueCount();
       await storageService.saveAppState({
         isSyncing: false,
         lastSyncAt: new Date().toISOString(),
-        pendingSyncCount: await storageService.getSyncQueueCount(),
+        pendingSyncCount: remainingCount,
         lastError: undefined,
       });
 
       await this.notifySubscribers();
-      this.isRunning = false;
       return true;
     } catch (error) {
       console.error('Error en sincronización:', error);
@@ -106,11 +125,12 @@ class SyncService {
       });
 
       await this.notifySubscribers();
-      this.isRunning = false;
 
       // Retry with exponential backoff
       this.scheduleRetry();
       return false;
+    } finally {
+      this.isRunning = false;
     }
   }
 
@@ -135,7 +155,7 @@ class SyncService {
     }, 10000);
   }
 
-  async forcSync(): Promise<void> {
+  async forceSync(): Promise<void> {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
@@ -159,8 +179,8 @@ class SyncService {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
     }
-    window.removeEventListener('online', this.handleOnline);
-    window.removeEventListener('offline', this.handleOffline);
+    window.removeEventListener('online', this.boundHandleOnline);
+    window.removeEventListener('offline', this.boundHandleOffline);
   }
 }
 

@@ -13,6 +13,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 const API_BASE = '/api';
+const MAX_SYNC_RETRIES = 5;
 
 class ApiService {
   private token: string | null = null;
@@ -363,8 +364,8 @@ class ApiService {
     return response;
   }
 
-  async updateCommitment(commitmentId: string, updates: Partial<Commitment>): Promise<ApiResponse<Commitment>> {
-    return this.request<Commitment>(`/commitments/${commitmentId}`, {
+  async updateCommitment(ticketId: string, commitmentId: string, updates: Partial<Commitment>): Promise<ApiResponse<Commitment>> {
+    return this.request<Commitment>(`/tickets/${ticketId}/commitments/${commitmentId}`, {
       method: 'PATCH',
       body: JSON.stringify(updates),
     });
@@ -469,11 +470,29 @@ class ApiService {
         if (result.status === 'completed') {
           await storageService.removeSyncItem(result.id);
         } else {
-          await storageService.updateSyncItem(result.id, {
-            status: 'failed',
-            attempts: (pending.find(p => p.id === result.id)?.attempts || 0) + 1,
-            lastAttemptAt: new Date().toISOString(),
-          });
+          const item = pending.find(p => p.id === result.id);
+          const attempts = (item?.attempts || 0) + 1;
+
+          if (attempts >= MAX_SYNC_RETRIES) {
+            // Max retries exceeded, remove the sync item and clean up local entity
+            console.warn(`Sync item ${result.id} exceeded max retries (${MAX_SYNC_RETRIES}), removing`);
+            if (item && item.operation === 'create') {
+              // Remove the locally-created entity that was never accepted by server
+              if (item.entity === 'ticket') {
+                await storageService.deleteTicket(item.entityId);
+              } else if (item.entity === 'message') {
+                await storageService.deleteMessage(item.entityId);
+              }
+            }
+            await storageService.removeSyncItem(result.id);
+          } else {
+            // Mark as pending so it will be retried
+            await storageService.updateSyncItem(result.id, {
+              status: 'pending',
+              attempts,
+              lastAttemptAt: new Date().toISOString(),
+            });
+          }
         }
       }
 

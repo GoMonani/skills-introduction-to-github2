@@ -154,7 +154,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const forceSync = useCallback(async () => {
-    await syncService.forcSync();
+    await syncService.forceSync();
     await refreshTickets();
   }, [refreshTickets]);
 

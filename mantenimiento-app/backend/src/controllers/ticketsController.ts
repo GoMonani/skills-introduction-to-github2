@@ -215,11 +215,11 @@ export async function updateTicket(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Prevent modifying completed tickets
-    if (ticket.status === 'completado' && updates.status !== 'completado') {
+    // Prevent status changes on completed tickets (but allow other field updates)
+    if (ticket.status === 'completado' && updates.status && updates.status !== 'completado') {
       res.status(400).json({
         success: false,
-        error: 'No se puede modificar un trabajo completado',
+        error: 'No se puede cambiar el estado de un trabajo completado',
       });
       return;
     }

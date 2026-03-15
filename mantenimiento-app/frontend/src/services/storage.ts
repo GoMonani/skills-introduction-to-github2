@@ -200,6 +200,11 @@ class StorageService {
     await Promise.all([...messages.map(m => tx.store.put(m)), tx.done]);
   }
 
+  async deleteMessage(id: string): Promise<void> {
+    const db = this.getDb();
+    await db.delete('messages', id);
+  }
+
   // ============ COMMITMENTS ============
 
   async saveCommitment(commitment: Commitment): Promise<void> {

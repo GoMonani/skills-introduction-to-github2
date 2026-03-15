@@ -146,12 +146,12 @@ export async function updateCommitment(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const { commitmentId } = req.params;
+    const { ticketId, commitmentId } = req.params;
     const updates = req.body;
 
-    // Get all commitments to find this one
-    const allCommitments = await googleSheetsService.getPendingCommitments();
-    const commitment = allCommitments.find(c => c.id === commitmentId);
+    // Get all commitments for this ticket to find the target one
+    const ticketCommitments = await googleSheetsService.getCommitmentsByTicketId(ticketId);
+    const commitment = ticketCommitments.find(c => c.id === commitmentId);
 
     if (!commitment) {
       res.status(404).json({

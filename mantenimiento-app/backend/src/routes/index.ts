@@ -56,7 +56,7 @@ router.post(
   commitmentsController.createCommitment
 );
 router.get('/tickets/:ticketId/commitments', authMiddleware, commitmentsController.getCommitments);
-router.patch('/commitments/:commitmentId', authMiddleware, commitmentsController.updateCommitment);
+router.patch('/tickets/:ticketId/commitments/:commitmentId', authMiddleware, commitmentsController.updateCommitment);
 router.post('/commitments/send-reminders', commitmentsController.sendReminders);
 
 // ============ Files Routes ============

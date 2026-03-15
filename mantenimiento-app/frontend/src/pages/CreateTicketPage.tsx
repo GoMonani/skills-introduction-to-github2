@@ -146,7 +146,12 @@ export function CreateTicketPage() {
       if (result.success && result.data) {
         // Upload photos if any
         if (state.photos.length > 0) {
-          await apiService.uploadFiles(result.data.id, state.photos);
+          try {
+            await apiService.uploadFiles(result.data.id, state.photos);
+          } catch (uploadError) {
+            console.error('Error uploading photos:', uploadError);
+            // Continue - ticket was created, photos can be uploaded later
+          }
         }
 
         await refreshTickets();
